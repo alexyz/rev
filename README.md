@@ -3,7 +3,7 @@ Reversi
 
 Reversi implementation
 
-Human player is SwingPlayers, all others are computer players with various strategies
+Human player is SwingPlayer, all others are computer players with various strategies
 
 Screenshots
 -
