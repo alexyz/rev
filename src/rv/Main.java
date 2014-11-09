@@ -71,7 +71,7 @@ public class Main {
 		}
 	}
 	
-	public static byte play(Model model, Class<? extends Player> blackClass, Class<? extends Player> whiteClass) throws Exception {
+	public static void play(Model model, Class<? extends Player> blackClass, Class<? extends Player> whiteClass) throws Exception {
 		Player black = blackClass.newInstance();
 		black.init(model, true);
 		Player white = whiteClass.newInstance();
@@ -97,7 +97,7 @@ public class Main {
 						out.println("WINNER: " + winner + " as " + (winner == black ? "black" : "white"));
 					else
 						out.println("DRAW");
-					return winner == black ? Model.BLACK : winner == white ? Model.WHITE : 0;
+					return;
 				}
 				out.println(player + " must pass");
 				
@@ -112,6 +112,7 @@ public class Main {
 				// computer player
 				out.println();
 				out.println(model);
+				Thread.sleep(1000);
 				Move move = player.getMove();
 				out.println(player + " moves to " + move);
 				model.move(move);

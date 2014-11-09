@@ -2,11 +2,14 @@ package rv;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
-import java.awt.Point;
+import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -23,6 +26,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.SwingConstants;
 
 public class RevJFrame extends JFrame {
 	
@@ -43,13 +47,13 @@ public class RevJFrame extends JFrame {
 		instance.show();
 	}
 	
-	private final RevJPanel rp = new RevJPanel(this);
-	private final JComboBox<PlayerItem> bcombo;
-	private final JComboBox<PlayerItem> wcombo;
-
+	private final RevJPanel revPanel = new RevJPanel(this);
+	private final JComboBox<PlayerItem> blackCombo;
+	private final JComboBox<PlayerItem> whiteCombo;
+	
 	private volatile List<Move> moves;
 	private volatile Move move;
-
+	
 	public RevJFrame () {
 		super(TITLE);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -59,8 +63,10 @@ public class RevJFrame extends JFrame {
 			players.add(new PlayerItem(c));
 		}
 		
-		bcombo = new JComboBox<>(players);
-		wcombo = new JComboBox<>(players);
+		blackCombo = new JComboBox<>(players);
+		whiteCombo = new JComboBox<>(players);
+		whiteCombo.setSelectedIndex(1);
+		
 		JButton startButton = new JButton("Start");
 		
 		startButton.addActionListener(new ActionListener() {
@@ -70,33 +76,39 @@ public class RevJFrame extends JFrame {
 			}
 		});
 		
-		JPanel b = new JPanel();
-		b.add(new JLabel("Black"));
-		b.add(bcombo);
-		b.add(new JLabel("White"));
-		b.add(wcombo);
-		b.add(startButton);
+		JPanel northPanel = new JPanel();
+		northPanel.add(new JLabel("Black"));
+		northPanel.add(blackCombo);
+		northPanel.add(new JLabel("White"));
+		northPanel.add(whiteCombo);
+		northPanel.add(startButton);
 		
 		JPanel p = new JPanel(new BorderLayout());
-		p.add(b, BorderLayout.NORTH);
-		p.add(rp, BorderLayout.CENTER);
+		p.add(northPanel, BorderLayout.NORTH);
+		p.add(revPanel, BorderLayout.CENTER);
+		p.setBorder(BorderFactory.createEmptyBorder(5,5,5,5));
 		setContentPane(p);
 		pack();
 	}
 	
 	private void start () {
-		final PlayerItem bp = (PlayerItem) bcombo.getSelectedItem();
-		final PlayerItem wp = (PlayerItem) wcombo.getSelectedItem();
+		final PlayerItem bp = (PlayerItem) blackCombo.getSelectedItem();
+		final PlayerItem wp = (PlayerItem) whiteCombo.getSelectedItem();
 		final Model model = new Model();
-		rp.setModel(model);
+		revPanel.setModel(model);
 		repaint();
 		Thread t = new Thread() {
 			@Override
-			public void run() {
+			public void run () {
 				try {
-					byte w = Main.play(model, bp.c, wp.c);
-					String ws = w == Model.BLACK ? "black" : w == Model.WHITE ? "white" : "draw";
-					JOptionPane.showMessageDialog(RevJFrame.this, "Winner: " + ws);
+					Main.play(model, bp.c, wp.c);
+					repaint();
+					int[] count = model.getCount();
+					int bc = count[Model.BLACK];
+					int wc = count[Model.WHITE];
+					String ws = bc > wc ? "Black" : bc == wc ? "Draw" : "White";
+					JOptionPane.showMessageDialog(RevJFrame.this, "Black: " + bc + " White: " + wc + " Winner: " + ws);
+					
 				} catch (Exception e1) {
 					JOptionPane.showMessageDialog(RevJFrame.this, e1.toString());
 				}
@@ -106,7 +118,7 @@ public class RevJFrame extends JFrame {
 		t.setPriority(Thread.MIN_PRIORITY);
 		t.start();
 	}
-
+	
 	public void clicked (int x, int y) {
 		System.out.println("clicked " + x + ", " + y);
 		synchronized (this) {
@@ -141,6 +153,7 @@ public class RevJFrame extends JFrame {
 				}
 			}
 			setTitle(TITLE);
+			repaint();
 			return move;
 		}
 	}
@@ -153,13 +166,20 @@ class SwingPlayer extends Player {
 		return RevJFrame.instance.nextMove(getMoves());
 	}
 	
+	@Override
+	public boolean isReal () {
+		return true;
+	}
+	
 }
 
 class PlayerItem {
 	public final Class<? extends Player> c;
+	
 	public PlayerItem (Class<? extends Player> c) {
 		this.c = c;
 	}
+	
 	@Override
 	public String toString () {
 		return c.getSimpleName();
@@ -170,35 +190,79 @@ class RevJPanel extends JPanel {
 	private final RevJComp[][] comps = new RevJComp[8][8];
 	private final RevJFrame f;
 	private Model model;
+	
 	public RevJPanel (RevJFrame f) {
-		super(new GridLayout(8, 8));
-		this.f = f;
-		setMinimumSize(new Dimension(600,600));
+		super(new GridBagLayout());
+		initComponents();
+		setMinimumSize(new Dimension(480, 480));
 		setPreferredSize(getMinimumSize());
-		for (int n = 0; n < comps.length; n++) {
-			for (int m = 0; m < comps[n].length; m++) {
-				RevJComp c = new RevJComp(this, n, m);
-				comps[n][m] = c;
-				add(c);
+		this.f = f;
+	}
+
+	private void initComponents () {
+		JPanel xp = new JPanel(new GridLayout(1, 8));
+		for (int x = 0; x < comps.length; x++) {
+			JLabel l = new JLabel("" + (char) ('a' + x));
+			l.setHorizontalAlignment(SwingConstants.CENTER);
+			l.setVerticalAlignment(SwingConstants.CENTER);
+			l.setBorder(BorderFactory.createRaisedBevelBorder());
+			xp.add(l);
+		}
+		
+		JPanel yp = new JPanel(new GridLayout(8, 1));
+		for (int y = 0; y < comps.length; y++) {
+			JLabel l = new JLabel(" " + (y + 1) + " ");
+			l.setHorizontalAlignment(SwingConstants.CENTER);
+			l.setVerticalAlignment(SwingConstants.CENTER);
+			l.setBorder(BorderFactory.createRaisedBevelBorder());
+			yp.add(l);
+		}
+		
+		JPanel bp = new JPanel(new GridLayout(8, 8));
+		for (int x = 0; x < comps.length; x++) {
+			for (int y = 0; y < comps[x].length; y++) {
+				final RevJComp c = new RevJComp(this, x, y);
+				c.addMouseListener(new MouseAdapter() {
+					@Override
+					public void mouseClicked(MouseEvent e) {
+						f.clicked(c.x, c.y);
+					}
+				});
+				comps[x][y] = c;
+				bp.add(c);
+				
 			}
 		}
-		addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked (MouseEvent e) {
-				clicked(e.getPoint());
-			}
-		});
-	}
-	private void clicked(Point p) {
-		Component c = getComponentAt(p);
-		if (c instanceof RevJComp) {
-			RevJComp rc = ((RevJComp) c);
-			f.clicked(rc.x, rc.y);
+		
+		{
+			GridBagConstraints c = new GridBagConstraints();
+			c.gridx = 1;
+			c.gridy = 0;
+			c.fill = GridBagConstraints.BOTH;
+			add(xp, c);
+		}
+		{
+			GridBagConstraints c = new GridBagConstraints();
+			c.gridx = 0;
+			c.gridy = 1;
+			c.fill = GridBagConstraints.BOTH;
+			add(yp, c);
+		}
+		{
+			GridBagConstraints c = new GridBagConstraints();
+			c.gridx = 1;
+			c.gridy = 1;
+			c.weightx = 1;
+			c.weighty = 1;
+			c.fill = GridBagConstraints.BOTH;
+			add(bp, c);
 		}
 	}
+	
 	public Model getModel () {
 		return model;
 	}
+	
 	public void setModel (Model model) {
 		this.model = model;
 	}
@@ -208,36 +272,52 @@ class RevJComp extends JComponent {
 	public final int x;
 	public final int y;
 	private final RevJPanel panel;
+	
 	public RevJComp (RevJPanel panel, int x, int y) {
 		this.panel = panel;
 		this.x = x;
 		this.y = y;
 		setBorder(BorderFactory.createEtchedBorder());
 	}
+	
 	@Override
-	protected void paintComponent (Graphics g) {
+	protected void paintComponent (final Graphics g) {
 		final Model model = panel.getModel();
 		if (model != null) {
+			final Graphics2D g2 = (Graphics2D) g;
 			final byte state = model.get(x, y);
-			final int h = getHeight();
-			final int w = getWidth();
+			final Insets i = getBorder().getBorderInsets(this);
+			final int w = getWidth() - i.right - i.left;
+			final int xi = i.left;
+			final int yi = i.top;
+			final int h = getHeight() - i.top - i.bottom;
+			final int w116 = w / 16;
+			final int h116 = h / 16;
+			final int w18 = w / 8;
+			final int h18 = h / 8;
+			final int w38 = (w * 3) / 8;
+			final int w48 = (w * 4) / 8;
+			final int w716 = (w * 7) / 16;
+			final int h716 = (h * 7) / 16;
+			
+			g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+			
 			if ((state & Model.DISC) != 0) {
 				Color c = (state & Model.BLACK) != 0 ? Color.black : Color.white;
 				g.setColor(c);
-				g.fillOval(2, 2, w-2, h-2);
+				g.fillOval(w116 + xi, h116 + yi, w - w18, h - h18);
 			}
-			String s = "";
-			for (boolean m : new boolean[] { true, false }) {
-				for (Move move : model.getMoves(m)) {
-					if (move.x == x && move.y == y) {
-						s = s + (m ? "b" : "w");
-						break;
-					}
-				}
-			}
-			if (s.length() > 0) {
-				g.setColor(Color.blue);
-				g.drawString(s, w / 2, h / 2);
+			
+			Move bm = Move.getMove(model.getMoves(true), x, y);
+			Move wm = Move.getMove(model.getMoves(false), x, y);
+			if (bm != null && wm != null) {
+				g.setColor(Color.white);
+				g.fillOval(w38 + xi, h716 + yi, w18, h18);
+				g.setColor(Color.black);
+				g.fillOval(w48 + xi, h716 + yi, w18, h18);
+			} else if (bm != null || wm != null) {
+				g.setColor(bm != null ? Color.black : Color.white);
+				g.fillOval(w716 + xi, h716 + yi, w18, h18);
 			}
 		}
 	}
