@@ -1,3 +1,5 @@
+package rv;
+
 /*
  * Reversi
  */
@@ -16,7 +18,7 @@ public class Main {
 
 	public static void main(final String[] args) throws Exception {
 		
-		play(HumanPlayer.class, AntiMobilityPlayer.class);
+		play(new Model(), HumanPlayer.class, AntiMobilityPlayer.class);
 
 		// value is 5x better than random
 		// value is 2x better than advantage
@@ -69,8 +71,7 @@ public class Main {
 		}
 	}
 	
-	private static void play(Class<? extends Player> blackClass, Class<? extends Player> whiteClass) throws Exception {
-		Model model = new Model();
+	public static byte play(Model model, Class<? extends Player> blackClass, Class<? extends Player> whiteClass) throws Exception {
 		Player black = blackClass.newInstance();
 		black.init(model, true);
 		Player white = whiteClass.newInstance();
@@ -96,7 +97,7 @@ public class Main {
 						out.println("WINNER: " + winner + " as " + (winner == black ? "black" : "white"));
 					else
 						out.println("DRAW");
-					return;
+					return winner == black ? Model.BLACK : winner == white ? Model.WHITE : 0;
 				}
 				out.println(player + " must pass");
 				
