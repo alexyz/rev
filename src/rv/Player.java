@@ -57,7 +57,7 @@ public abstract class Player {
 	public List<Move> filter(final Model model, final BoardFilter filter) {
 		final List<Move> moves = model.getMoves();
 		if (moves.size() <= 1) {
-			System.out.println("board filter: forced move " + moves);
+			//System.out.println("board filter: forced move " + moves);
 			return moves;
 		}
 		
@@ -89,7 +89,7 @@ public abstract class Player {
 				value = vMin;
 			}
 			
-			System.out.println("value of move " + move + " is " + value);
+			//System.out.println("value of move " + move + " is " + value);
 			
 			if (value > retMax) {
 				retMax = value;
@@ -100,7 +100,7 @@ public abstract class Player {
 			}
 		}
 		
-		System.out.println("move is " + ret);
+		//System.out.println("move is " + ret);
 		return ret;
 	}
 	

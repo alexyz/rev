@@ -20,12 +20,16 @@ class AdvantageBoardFilter extends BoardFilter {
 	}
 }
 
-/**
- * Value move by mobility afterwards
- */
 class MobilityBoardFilter extends BoardFilter {
 	@Override
 	public int valueOfImpl(Model model) {
 		return model.getMobility();
+	}
+}
+
+class ZeroBoardFilter extends BoardFilter {
+	@Override
+	public int valueOfImpl(Model model) {
+		return 0;
 	}
 }

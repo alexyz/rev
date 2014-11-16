@@ -34,10 +34,10 @@ public class Main {
 		
 		// TODO thread this...
 		// TODO allow all players, display ranking
-		test (ValuePlayer2.class, AdvantagePlayer2.class);
+		test (new RandomPlayer(), new BoardPlayer(new ZeroBoardFilter()));
 	}
 	
-	private static void test (final Class<? extends Player> p1c, final Class<? extends Player> p2c) throws Exception {
+	private static void test (final Player p1, final Player p2) throws Exception {
 		final float[] p1w = new float[1];
 		final float[] p2w = new float[1];
 		final float[] d = new float[1];
@@ -48,8 +48,6 @@ public class Main {
 				@Override
 				public void run () {
 					try {
-						Player p1 = p1c.newInstance();
-						Player p2 = p2c.newInstance();
 						autoplay(p1, p1w, p2, p2w, d);
 						autoplay(p2, p2w, p1, p1w, d);
 						System.out.println("x");
@@ -62,13 +60,13 @@ public class Main {
 		}
 		l.await();
 		e.shutdown();
-		System.out.println(p1c.getSimpleName() + " = " + p1w[0] + ", " + (p1w[0] / (p2w[0] + d[0])));
-		System.out.println(p2c.getSimpleName() + " = " + p2w[0] + ", " + (p2w[0] / (p1w[0] + d[0])));
+		System.out.println(p1 + " = " + p1w[0] + ", " + (p1w[0] / (p2w[0] + d[0])));
+		System.out.println(p2 + " = " + p2w[0] + ", " + (p2w[0] / (p1w[0] + d[0])));
 		System.out.println("draw = " + d[0]);
 	}
 
 	private static void autoplay(Player black, float[] bw, Player white, float[] ww, float[] d) {
-		int games = 10000;
+		int games = 1000;
 		for (int n = 0; n < games; n++) {
 			Model model = new Model();
 			autoplay(model, black, bw, white, ww, d);
