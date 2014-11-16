@@ -4,8 +4,11 @@ package rv;
  * Reversi
  */
 
-import java.io.*;
-import java.util.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import rv.Model.Count;
 
 /**
  * Reversi main loop
@@ -13,124 +16,132 @@ import java.util.*;
  */
 public class Main {
 	
-	public static final BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-	public static final PrintStream out = System.out;
-
 	public static void main(final String[] args) throws Exception {
 		
-		play(new Model(), HumanPlayer.class, AntiMobilityPlayer.class);
+		//play(new Model(), HumanPlayer.class, AntiMobilityPlayer.class);
 
-		// value is 5x better than random
+		// advantage  is 1.94 better than random
+		// value      is 2.53 better than random
+		// mobility   is 2.56 better than random
+		// stability  is 2.99 better than random
+		// antimob    is 3.00 better than random
+		// advantage2 is 3.29 better than random
+		// value2     is 4.29 better than random
+		
 		// value is 2x better than advantage
-		// advantage is 2.5x better than random
-		// mobility is 4-5x better than random
 		// value is 1.25x better than mobility
-		// antimob is 4x better than random
 		// antimob is equal to value
 		// antimob is 2-6x better than advantage
 		// antimob is 2-11x better than mobility
 		
 		// TODO thread this...
 		// TODO allow all players, display ranking
-		//autoplay(RandomPlayer.class, ValuePlayer.class);
-		//autoplay(ValuePlayer.class, RandomPlayer.class);
+		test (ValuePlayer2.class, AdvantagePlayer2.class);
+	}
+	
+	private static void test (final Class<? extends Player> p1c, final Class<? extends Player> p2c) throws Exception {
+		final float[] p1w = new float[1];
+		final float[] p2w = new float[1];
+		final float[] d = new float[1];
+		ExecutorService e = Executors.newFixedThreadPool(8);
+		final CountDownLatch l = new CountDownLatch(8);
+		for (int n = 0; n < 8; n++) {
+			e.execute(new Runnable() {
+				@Override
+				public void run () {
+					try {
+						Player p1 = p1c.newInstance();
+						Player p2 = p2c.newInstance();
+						autoplay(p1, p1w, p2, p2w, d);
+						autoplay(p2, p2w, p1, p1w, d);
+						System.out.println("x");
+						l.countDown();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			});
+		}
+		l.await();
+		e.shutdown();
+		System.out.println(p1c.getSimpleName() + " = " + p1w[0] + ", " + (p1w[0] / (p2w[0] + d[0])));
+		System.out.println(p2c.getSimpleName() + " = " + p2w[0] + ", " + (p2w[0] / (p1w[0] + d[0])));
+		System.out.println("draw = " + d[0]);
 	}
 
-	private static void autoplay(Class<? extends Player> blackClass, Class<? extends Player> whiteClass) throws Exception {
-		
-		int[] s = new int[3];
-		int games = 2000;
-		
+	private static void autoplay(Player black, float[] bw, Player white, float[] ww, float[] d) {
+		int games = 10000;
 		for (int n = 0; n < games; n++) {
 			Model model = new Model();
-			Player black = blackClass.newInstance();
-			black.init(model, true);
-			Player white = whiteClass.newInstance();
-			white.init(model, false);
-			autoplay(s, model, black, white);
+			autoplay(model, black, bw, white, ww, d);
 		}
-		
-		out.printf("%s as black wins: %d and draws: %d\n", blackClass, s[1], s[0]);
-		out.printf("%s as white wins: %d and draws: %d\n", whiteClass, s[2], s[0]);
 	}
 
-	private static void autoplay(int[] score, Model m, Player black, Player white) {
-		boolean blackMove = true;
+	private static void autoplay(Model m, Player black, float[] bw, Player white, float[] ww, float[] d) {
 		while (true) {
-			Player player = blackMove ? black : white;
-			if (m.pass(blackMove)) {
-				if (m.pass(!blackMove)) {
-					Player winner = m.getWinner(black, white);
-					score[winner == null ? 0 : winner == black ? 1 : 2]++;
+			Player player = m.blackMove() ? black : white;
+			if (m.isPass()) {
+				m.pass();
+				if (m.isPass()) {
+					Count c = m.getCount();
+					if (c.black > c.white) {
+						synchronized (bw) {
+							bw[0]++;
+						}
+					} else if (c.white > c.black) {
+						synchronized (ww) {
+							ww[0]++;
+						}
+					} else {
+						synchronized (d) {
+							d[0]++;
+						}
+					}
 					return;
 				}
 			} else {
-				m.move(player.getMove());
+				m.move(player.getMove(m));
 			}
-			blackMove = !blackMove;
 		}
 	}
 	
-	public static void play(Model model, Class<? extends Player> blackClass, Class<? extends Player> whiteClass) throws Exception {
-		Player black = blackClass.newInstance();
-		black.init(model, true);
-		Player white = whiteClass.newInstance();
-		white.init(model, false);
-		
-		out.println("Black: " + black);
-		out.println("White: " + white);
-		
-		boolean blackMove = true;
+	public static void play(Model model, Player black, Player white) throws Exception {
+		System.out.println("Black: " + black);
+		System.out.println("White: " + white);
 		
 		while (true) {
-			Player player = blackMove ? black : white;
+			Player player = model.blackMove() ? black : white;
 			
-			if (model.pass(blackMove)) {
+			if (model.isPass()) {
+				System.out.println(player + " must pass");
+				model.pass();
 				// player must pass
-				if (model.pass(!blackMove)) {
+				if (model.isPass()) {
+					System.out.println(player + " must pass");
 					// game over
-					out.println();
-					out.println(model);
-					out.println();
-					Player winner = model.getWinner(black, white);
-					if (winner != null)
-						out.println("WINNER: " + winner + " as " + (winner == black ? "black" : "white"));
-					else
-						out.println("DRAW");
+					System.out.println();
+					System.out.println(model);
+					System.out.println();
 					return;
 				}
-				out.println(player + " must pass");
 				
 			} else if (player.isReal()) {
 				// human player, show model state
-				out.println();
-				out.println(model);
-				Move move = player.getMove();
+				System.out.println();
+				System.out.println(model);
+				Move move = player.getMove(model);
 				model.move(move);
 
 			} else {
 				// computer player
-				out.println();
-				out.println(model);
+				System.out.println();
+				System.out.println(model);
 				Thread.sleep(1000);
-				Move move = player.getMove();
-				out.println(player + " moves to " + move);
+				Move move = player.getMove(model);
+				System.out.println(player + " moves to " + move);
 				model.move(move);
 			}
-			
-			blackMove = !blackMove;
 		}
-		
-		// TODO some kind of prompt for going backwards, changing players etc
-	}
-	
-	public static <T> List<T> add(List<T> list, T obj) {
-		if (obj != null) {
-			if (list == null)
-				list = new ArrayList<T>();
-			list.add(obj);
-		}
-		return list;
 	}
 	
 }

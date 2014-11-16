@@ -28,6 +28,8 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
+import rv.Model.Count;
+
 public class RevJFrame extends JFrame {
 	
 	public static RevJFrame instance;
@@ -37,12 +39,12 @@ public class RevJFrame extends JFrame {
 	
 	public static void main (String[] args) {
 		pcs.add(SwingPlayer.class);
-		pcs.add(AdvantagePlayer.class);
-		pcs.add(AntiMobilityPlayer.class);
-		pcs.add(MobilityPlayer.class);
 		pcs.add(RandomPlayer.class);
-		pcs.add(StabilityPlayer.class);
+		pcs.add(AdvantagePlayer.class);
 		pcs.add(ValuePlayer.class);
+		pcs.add(AntiMobilityPlayer.class);
+		pcs.add(AdvantagePlayer2.class);
+		pcs.add(ValuePlayer2.class);
 		instance = new RevJFrame();
 		instance.show();
 	}
@@ -101,13 +103,11 @@ public class RevJFrame extends JFrame {
 			@Override
 			public void run () {
 				try {
-					Main.play(model, bp.c, wp.c);
+					Main.play(model, bp.c.newInstance(), wp.c.newInstance());
 					repaint();
-					int[] count = model.getCount();
-					int bc = count[Model.BLACK];
-					int wc = count[Model.WHITE];
-					String ws = bc > wc ? "Black" : bc == wc ? "Draw" : "White";
-					JOptionPane.showMessageDialog(RevJFrame.this, "Black: " + bc + " White: " + wc + " Winner: " + ws);
+					Count c = model.getCount();
+					String ws = c.black > c.white ? "Black" : c.black == c.white ? "Draw" : "White";
+					JOptionPane.showMessageDialog(RevJFrame.this, "Black: " + c.black + " White: " + c.white + " Winner: " + ws);
 					
 				} catch (Exception e1) {
 					JOptionPane.showMessageDialog(RevJFrame.this, e1.toString());
@@ -162,8 +162,8 @@ public class RevJFrame extends JFrame {
 class SwingPlayer extends Player {
 	
 	@Override
-	public Move getMove () {
-		return RevJFrame.instance.nextMove(getMoves());
+	public Move getMove (Model model) {
+		return RevJFrame.instance.nextMove(model.getMoves());
 	}
 	
 	@Override
@@ -187,7 +187,6 @@ class PlayerItem {
 }
 
 class RevJPanel extends JPanel {
-	private final RevJComp[][] comps = new RevJComp[8][8];
 	private final RevJFrame f;
 	private Model model;
 	
@@ -201,7 +200,7 @@ class RevJPanel extends JPanel {
 
 	private void initComponents () {
 		JPanel xp = new JPanel(new GridLayout(1, 8));
-		for (int x = 0; x < comps.length; x++) {
+		for (int x = 0; x < 8; x++) {
 			JLabel l = new JLabel("" + (char) ('a' + x));
 			l.setHorizontalAlignment(SwingConstants.CENTER);
 			l.setVerticalAlignment(SwingConstants.CENTER);
@@ -210,7 +209,7 @@ class RevJPanel extends JPanel {
 		}
 		
 		JPanel yp = new JPanel(new GridLayout(8, 1));
-		for (int y = 0; y < comps.length; y++) {
+		for (int y = 0; y < 8; y++) {
 			JLabel l = new JLabel(" " + (y + 1) + " ");
 			l.setHorizontalAlignment(SwingConstants.CENTER);
 			l.setVerticalAlignment(SwingConstants.CENTER);
@@ -219,8 +218,8 @@ class RevJPanel extends JPanel {
 		}
 		
 		JPanel bp = new JPanel(new GridLayout(8, 8));
-		for (int x = 0; x < comps.length; x++) {
-			for (int y = 0; y < comps[x].length; y++) {
+		for (int y = 0; y < 8; y++) {
+			for (int x = 0; x < 8; x++) {
 				final RevJComp c = new RevJComp(this, x, y);
 				c.addMouseListener(new MouseAdapter() {
 					@Override
@@ -228,9 +227,7 @@ class RevJPanel extends JPanel {
 						f.clicked(c.x, c.y);
 					}
 				});
-				comps[x][y] = c;
 				bp.add(c);
-				
 			}
 		}
 		
@@ -308,15 +305,9 @@ class RevJComp extends JComponent {
 				g.fillOval(w116 + xi, h116 + yi, w - w18, h - h18);
 			}
 			
-			Move bm = Move.getMove(model.getMoves(true), x, y);
-			Move wm = Move.getMove(model.getMoves(false), x, y);
-			if (bm != null && wm != null) {
-				g.setColor(Color.white);
-				g.fillOval(w38 + xi, h716 + yi, w18, h18);
-				g.setColor(Color.black);
-				g.fillOval(w48 + xi, h716 + yi, w18, h18);
-			} else if (bm != null || wm != null) {
-				g.setColor(bm != null ? Color.black : Color.white);
+			Move m = Move.getMove(model.getMoves(), x, y);
+			if (m != null) {
+				g.setColor(model.blackMove() ? Color.black : Color.white);
 				g.fillOval(w716 + xi, h716 + yi, w18, h18);
 			}
 		}

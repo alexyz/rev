@@ -1,42 +1,23 @@
 package rv;
 
-/*
- * Reversi
- */
-
-import java.io.*;
 import java.util.*;
-import java.util.regex.*;
+
+import static rv.Filter.*;
 
 /**
  * An abstract game player, either human or computer.
  * All players have a fixed model and colour.
  */
 public abstract class Player {
-	public static final Filter value = new ValueFilter();
-	public static final Filter advantage = new AdvantageFilter();
-	public static final Filter mobility = new MobilityFilter();
-	public static final Filter antiMobility = new AntiMobilityFilter();
-	public static final Filter stability = new StabilityFilter();
-	protected Model model;
-	protected boolean black;
-	public void init(Model model, boolean black) {
-		this.model = model;
-		this.black = black;
-	}
+	
 	/**
 	 * Return given players move as int[] { x, y }
 	 */
-	public abstract Move getMove();
-	/**
-	 * Get moves from model
-	 */
-	public final List<Move> getMoves() {
-		return model.getMoves(black);
-	}
+	public abstract Move getMove(Model model);
 	/**
 	 * Return name of class
 	 */
+	@Override
 	public String toString() {
 		return getClass().getSimpleName();
 	}
@@ -49,10 +30,11 @@ public abstract class Player {
 	/**
 	 * Return the highest value moves in the list
 	 */
-	public List<Move> filter(Filter filter, List<Move> moves) {
-		if (moves.size() == 1)
+	public List<Move> filter(Filter filter, Model model, List<Move> moves) {
+		if (moves.size() <= 1) {
 			return moves;
-		List<Move> ret = new ArrayList<Move>();
+		}
+		List<Move> ret = new ArrayList<>();
 		int vMax = Integer.MIN_VALUE;
 		for (int n = 0; n < moves.size(); n++) {
 			Move move = moves.get(n);
@@ -68,6 +50,37 @@ public abstract class Player {
 		//Main.out.println("Filter moves (v=" + vMax + "): " + ret);
 		return ret;
 	}
+	/**
+	 * Return the highest value moves in the list
+	 */
+	public List<Move> filter(Model model, BoardFilter filter) {
+		List<Move> moves = model.getMoves();
+		if (moves.size() == 1)
+			return moves;
+		List<Move> ret = new ArrayList<>();
+		int vMax = Integer.MIN_VALUE;
+		for (Move move : moves) {
+			Model m2 = model.clone();
+			m2.move(move);
+			List<Move> moves2 = m2.getMoves();
+			if (moves2.size() > 0) {
+				for (Move move2 : moves2) {
+					Model m3 = m2.clone();
+					m3.move(move2);
+					int v = filter.valueOf(m3);
+					if (v > vMax) {
+						vMax = v;
+						ret.clear();
+						ret.add(move);
+					} else if (v == vMax) {
+						ret.add(move);
+					}
+				}
+				
+			}
+		}
+		return ret;
+	}
 	public static Move random(List<Move> moves) {
 		if (moves.size() == 1)
 			return moves.get(0);
@@ -80,8 +93,9 @@ public abstract class Player {
  * Computer player that makes completely random moves
  */
 class RandomPlayer extends Player {
-	public Move getMove() {
-		return random(getMoves());
+	@Override
+	public Move getMove(Model model) {
+		return random(model.getMoves());
 	}
 }
 
@@ -89,8 +103,9 @@ class RandomPlayer extends Player {
  * Computer player that makes the move to capture the most high value squares
  */
 class ValuePlayer extends Player {
-	public Move getMove() {
-		return random(filter(value, getMoves()));
+	@Override
+	public Move getMove(Model model) {
+		return random(filter(value, model, model.getMoves()));
 	}
 }
 
@@ -98,81 +113,36 @@ class ValuePlayer extends Player {
  * Computer player that plays for numerical advantage
  */
 class AdvantagePlayer extends Player {
-	public Move getMove() {
-		return random(filter(value, filter(advantage, getMoves())));
+	@Override
+	public Move getMove(Model model) {
+		return random(filter(advantage, model, model.getMoves()));
 	}
 }
 
-/**
- * Computer player that plays for mobility
- */
-class MobilityPlayer extends Player {
-	public Move getMove() {
-		return random(filter(value, filter(mobility, getMoves())));
-	}
-}
-
-/**
- * Computer player that plays for mobility
- */
 class AntiMobilityPlayer extends Player {
-	public Move getMove() {
-		return random(filter(value, filter(antiMobility, getMoves())));
+	@Override
+	public Move getMove(Model model) {
+		return random(filter(antiMobility, model, model.getMoves()));
 	}
 }
 
-class StabilityPlayer extends Player {
-	public Move getMove() {
-		return random(filter(value, filter(antiMobility, filter(stability, getMoves()))));
+class AdvantagePlayer2 extends Player {
+	@Override
+	public Move getMove(Model model) {
+		return random(filter(advantage2, model, model.getMoves()));
 	}
 }
 
-/**
- * Interactive human player
- */
-class HumanPlayer extends Player {
-	private static final Pattern linePat = Pattern.compile(" *([a-h]) *([1-8]) *");
-	public boolean isReal() {
-		return true;
+class ValuePlayer2 extends Player {
+	@Override
+	public Move getMove(Model model) {
+		return random(filter(value2, model, model.getMoves()));
 	}
-	public Move getMove() {
-		List<Move> moves = getMoves();
-		Main.out.println(moves);
-		while (true) {
-			try {
-				Main.out.print(black ? "black> " : "white> ");
-				// TODO allow model manipulation commands
-				String line = Main.in.readLine();
-				if (line == null || (line = line.toLowerCase().trim()).equals("exit")) {
-					Main.out.println("exiting");
-					System.exit(0);
-					return null;
-					
-				} else if (line.equals("debug")) {
-					Filter.debug = !Filter.debug;
-					Main.out.println("Debug filters: " + Filter.debug);
-					
-				} else if (line.equals("back")) {
-					Main.out.println("live with it");
-					
-				} else {
-					Matcher m = linePat.matcher(line);
-					if (m.matches()) {
-						int x = m.group(1).charAt(0) - 'a';
-						int y = m.group(2).charAt(0) - '1';
-						Move move = Move.getMove(moves, x, y);
-						if (move != null)
-							return move;
-						Main.out.println("not legal");
-						
-					} else {
-						Main.out.println("invalid command");
-					}
-				}
-				
-			} catch (IOException e) {
-				throw new RuntimeException(e);
-			}
-		}
+}
+
+class AdvantageBoardPlayer extends Player {
+	@Override
+	public Move getMove (Model model) {
+		return filter(model, BoardFilter.advantageBoard);
 	}
 }
