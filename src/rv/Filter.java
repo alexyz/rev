@@ -2,8 +2,6 @@ package rv;
 
 import java.util.List;
 
-import rv.Model.Count;
-
 /*
  * Reversi
  */
@@ -29,24 +27,6 @@ class AdvantageFilter extends Filter {
 	@Override
 	public int valueOf(Model model, Move move) {
 		return move.getAdvantage();
-	}
-}
-
-class AdvantageBoardFilter extends BoardFilter {
-	@Override
-	public int valueOf(Model model) {
-		Count c = model.getCount();
-		return model.blackMove() ? c.black : c.white;
-	}
-}
-
-/**
- * Value move by mobility afterwards
- */
-class MobilityBoardFilter extends BoardFilter {
-	@Override
-	public int valueOf(Model model) {
-		return model.getMobility();
 	}
 }
 

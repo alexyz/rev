@@ -8,8 +8,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import rv.Model.Count;
-
 /**
  * Reversi main loop
  * TODO really needs a gui
@@ -83,12 +81,13 @@ public class Main {
 			if (m.isPass()) {
 				m.pass();
 				if (m.isPass()) {
-					Count c = m.getCount();
-					if (c.black > c.white) {
+					int bd = m.getBlackDiscs();
+					int wd = m.getWhiteDiscs();
+					if (bd > wd) {
 						synchronized (bw) {
 							bw[0]++;
 						}
-					} else if (c.white > c.black) {
+					} else if (wd > bd) {
 						synchronized (ww) {
 							ww[0]++;
 						}
@@ -105,7 +104,7 @@ public class Main {
 		}
 	}
 	
-	public static void play(Model model, Player black, Player white) throws Exception {
+	public static void play(Model model, Player black, Player white) {
 		System.out.println("Black: " + black);
 		System.out.println("White: " + white);
 		
@@ -136,11 +135,17 @@ public class Main {
 				// computer player
 				System.out.println();
 				System.out.println(model);
-				Thread.sleep(1000);
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 				Move move = player.getMove(model);
 				System.out.println(player + " moves to " + move);
 				model.move(move);
 			}
+			
+			System.out.println();
 		}
 	}
 	

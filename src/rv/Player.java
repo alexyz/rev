@@ -50,37 +50,60 @@ public abstract class Player {
 		//Main.out.println("Filter moves (v=" + vMax + "): " + ret);
 		return ret;
 	}
+	
 	/**
 	 * Return the highest value moves in the list
 	 */
-	public List<Move> filter(Model model, BoardFilter filter) {
-		List<Move> moves = model.getMoves();
-		if (moves.size() == 1)
+	public List<Move> filter(final Model model, final BoardFilter filter) {
+		final List<Move> moves = model.getMoves();
+		if (moves.size() <= 1) {
+			System.out.println("board filter: forced move " + moves);
 			return moves;
-		List<Move> ret = new ArrayList<>();
-		int vMax = Integer.MIN_VALUE;
+		}
+		
+		int retMax = Integer.MIN_VALUE;
+		final List<Move> ret = new ArrayList<>();
+		
+		// for every move
 		for (Move move : moves) {
-			Model m2 = model.clone();
-			m2.move(move);
-			List<Move> moves2 = m2.getMoves();
-			if (moves2.size() > 0) {
-				for (Move move2 : moves2) {
-					Model m3 = m2.clone();
-					m3.move(move2);
+			Model model2 = model.clone();
+			model2.move(move);
+			int value;
+			
+			if (model2.isPass()) {
+				model2.pass();
+				value = filter.valueOf(model2);
+				
+			} else {
+				// find least worst move
+				List<Move> oppmoves = model2.getMoves();
+				int vMin = Integer.MAX_VALUE;
+				for (Move oppmove : oppmoves) {
+					Model m3 = model2.clone();
+					m3.move(oppmove);
 					int v = filter.valueOf(m3);
-					if (v > vMax) {
-						vMax = v;
-						ret.clear();
-						ret.add(move);
-					} else if (v == vMax) {
-						ret.add(move);
+					if (v < vMin) {
+						vMin = v;
 					}
 				}
-				
+				value = vMin;
+			}
+			
+			System.out.println("value of move " + move + " is " + value);
+			
+			if (value > retMax) {
+				retMax = value;
+				ret.clear();
+			}
+			if (value >= retMax) {
+				ret.add(move);
 			}
 		}
+		
+		System.out.println("move is " + ret);
 		return ret;
 	}
+	
 	public static Move random(List<Move> moves) {
 		if (moves.size() == 1)
 			return moves.get(0);
@@ -140,9 +163,17 @@ class ValuePlayer2 extends Player {
 	}
 }
 
-class AdvantageBoardPlayer extends Player {
+class BoardPlayer extends Player {
+	private final BoardFilter f;
+	public BoardPlayer(BoardFilter f) {
+		this.f = f;
+	}
 	@Override
 	public Move getMove (Model model) {
-		return filter(model, BoardFilter.advantageBoard);
+		return random(filter(model, f));
+	}
+	@Override
+	public String toString() {
+		return f.getClass().getSimpleName();
 	}
 }

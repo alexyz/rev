@@ -25,7 +25,10 @@ public class Model {
 	private final byte[][] board = new byte[8][8];
 	private final List<Move> moves = new ArrayList<>();
 	
-	private boolean blackMove;;
+	private boolean blackMove;
+	private int blackDiscs;
+	private int whiteDiscs;
+	private int free;
 
 	public Model() {
 		set(3, 3, WHITE);
@@ -67,6 +70,35 @@ public class Model {
 		updateMoves();
 	}
 	
+	public int getBlackDiscs() {
+		return blackDiscs;
+	}
+	
+	public int getWhiteDiscs() {
+		return whiteDiscs;
+	}
+	
+	public int getFree() {
+		return free;
+	}
+	
+	public int getDiscs() {
+		return blackMove ? blackDiscs : whiteDiscs;
+	}
+	
+	public int getOppDiscs() {
+		return blackMove ? whiteDiscs : blackDiscs;
+	}
+	
+	public boolean isWin() {
+		// XXX could also win if free > 0 but both players have no mobility
+		return getOppDiscs() == 0 || (free == 0 && getDiscs() > getOppDiscs());
+	}
+	
+	public boolean isLose() {
+		return getDiscs() == 0 || (free == 0 && getDiscs() < getOppDiscs());
+	}
+	
 	/**
 	 * Return true if given player must pass
 	 */
@@ -92,13 +124,22 @@ public class Model {
 	
 	private void updateMoves() {
 		moves.clear();
+		blackDiscs = 0;
+		whiteDiscs = 0;
+		free = 0;
 		for (int x = 0; x < 8; x++) {
 			for (int y = 0; y < 8; y++) {
-				if (get(x,y) != 0)
-					continue;
-				Move move = getMove(x, y);
-				if (move != null) {
-					moves.add(move);
+				byte d = get(x,y);
+				if ((d & BLACK) != 0) {
+					blackDiscs++;
+				} else if ((d & WHITE) != 0) {
+					whiteDiscs++;
+				} else {
+					free++;
+					Move move = getMove(x, y);
+					if (move != null) {
+						moves.add(move);
+					}
 				}
 			}
 		}
@@ -170,41 +211,6 @@ public class Model {
 	}
 	
 	/**
-	 * Get square population count as int[] { free, BLACK, WHITE }
-	 */
-	public Count getCount () {
-		int b = 0, w = 0, f = 0;
-		for (int x = 0; x < 8; x++) {
-			for (int y = 0; y < 8; y++) {
-				byte s = get(x, y);
-				if ((s & BLACK) != 0) {
-					b++;
-				} else if ((s & WHITE) != 0) {
-					w++;
-				} else {
-					f++;
-				}
-			}
-		}
-		return new Count(b, w, f);
-	}
-	
-	public static class Count {
-		public final int black;
-		public final int white;
-		public final int free;
-		public Count (int black, int white, int free) {
-			this.black = black;
-			this.white = white;
-			this.free = free;
-		}
-		@Override
-		public String toString () {
-			return "Count[black=" + black + " white=" + white + " free=" + free + "]";
-		}
-	}
-	
-	/**
 	 * Return string representation of board
 	 * TODO highlight last move
 	 */
@@ -222,7 +228,7 @@ public class Model {
 		}
 		sb.append("  +----------------+\n");
 		sb.append("   a b c d e f g h \n");
-		sb.append(getCount());
+		sb.append(" black: " + blackDiscs + " white: " + whiteDiscs + " free: " + free);
 		return sb.toString();
 	}
 	
@@ -309,6 +315,6 @@ class Move {
 	}
 	@Override
 	public String toString() {
-		return String.format("%c%d: %d", (char) ('a' + x), y + 1, getAdvantage());
+		return String.format("%c%d(%d)", (char) ('a' + x), y + 1, getAdvantage());
 	}
 }

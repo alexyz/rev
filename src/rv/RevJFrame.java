@@ -28,30 +28,18 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 
-import rv.Model.Count;
-
 public class RevJFrame extends JFrame {
 	
-	public static RevJFrame instance;
-	
 	private static final String TITLE = "Rev";
-	private static final List<Class<? extends Player>> pcs = new ArrayList<>();
 	
 	public static void main (String[] args) {
-		pcs.add(SwingPlayer.class);
-		pcs.add(RandomPlayer.class);
-		pcs.add(AdvantagePlayer.class);
-		pcs.add(ValuePlayer.class);
-		pcs.add(AntiMobilityPlayer.class);
-		pcs.add(AdvantagePlayer2.class);
-		pcs.add(ValuePlayer2.class);
-		instance = new RevJFrame();
-		instance.show();
+		RevJFrame f = new RevJFrame();
+		f.show();
 	}
 	
 	private final RevJPanel revPanel = new RevJPanel(this);
-	private final JComboBox<PlayerItem> blackCombo;
-	private final JComboBox<PlayerItem> whiteCombo;
+	private final JComboBox<Player> blackCombo;
+	private final JComboBox<Player> whiteCombo;
 	
 	private volatile List<Move> moves;
 	private volatile Move move;
@@ -60,13 +48,19 @@ public class RevJFrame extends JFrame {
 		super(TITLE);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
-		Vector<PlayerItem> players = new Vector<>();
-		for (Class<? extends Player> c : pcs) {
-			players.add(new PlayerItem(c));
-		}
+		Vector<Player> ps = new Vector<>();
+		ps.add(new SwingPlayer(this));
+		ps.add(new BoardPlayer(new AdvantageBoardFilter()));
+		ps.add(new BoardPlayer(new MobilityBoardFilter()));
+		ps.add(new RandomPlayer());
+		ps.add(new AdvantagePlayer());
+		ps.add(new ValuePlayer());
+		ps.add(new AntiMobilityPlayer());
+		ps.add(new AdvantagePlayer2());
+		ps.add(new ValuePlayer2());
 		
-		blackCombo = new JComboBox<>(players);
-		whiteCombo = new JComboBox<>(players);
+		blackCombo = new JComboBox<>(ps);
+		whiteCombo = new JComboBox<>(ps);
 		whiteCombo.setSelectedIndex(1);
 		
 		JButton startButton = new JButton("Start");
@@ -94,8 +88,8 @@ public class RevJFrame extends JFrame {
 	}
 	
 	private void start () {
-		final PlayerItem bp = (PlayerItem) blackCombo.getSelectedItem();
-		final PlayerItem wp = (PlayerItem) whiteCombo.getSelectedItem();
+		final Player bp = (Player) blackCombo.getSelectedItem();
+		final Player wp = (Player) whiteCombo.getSelectedItem();
 		final Model model = new Model();
 		revPanel.setModel(model);
 		repaint();
@@ -103,11 +97,12 @@ public class RevJFrame extends JFrame {
 			@Override
 			public void run () {
 				try {
-					Main.play(model, bp.c.newInstance(), wp.c.newInstance());
+					Main.play(model, bp, wp);
 					repaint();
-					Count c = model.getCount();
-					String ws = c.black > c.white ? "Black" : c.black == c.white ? "Draw" : "White";
-					JOptionPane.showMessageDialog(RevJFrame.this, "Black: " + c.black + " White: " + c.white + " Winner: " + ws);
+					int bd = model.getBlackDiscs();
+					int wd = model.getWhiteDiscs();
+					String ws = bd > wd ? "Black" : bd == wd ? "Draw" : "White";
+					JOptionPane.showMessageDialog(RevJFrame.this, "Black: " + bd + " White: " + wd + " Winner: " + ws);
 					
 				} catch (Exception e1) {
 					JOptionPane.showMessageDialog(RevJFrame.this, e1.toString());
@@ -161,9 +156,15 @@ public class RevJFrame extends JFrame {
 
 class SwingPlayer extends Player {
 	
+	private final RevJFrame f;
+
+	public SwingPlayer(RevJFrame f) {
+		this.f = f;
+	}
+	
 	@Override
 	public Move getMove (Model model) {
-		return RevJFrame.instance.nextMove(model.getMoves());
+		return f.nextMove(model.getMoves());
 	}
 	
 	@Override
@@ -171,19 +172,6 @@ class SwingPlayer extends Player {
 		return true;
 	}
 	
-}
-
-class PlayerItem {
-	public final Class<? extends Player> c;
-	
-	public PlayerItem (Class<? extends Player> c) {
-		this.c = c;
-	}
-	
-	@Override
-	public String toString () {
-		return c.getSimpleName();
-	}
 }
 
 class RevJPanel extends JPanel {
