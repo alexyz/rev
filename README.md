@@ -8,9 +8,9 @@ Human player is SwingPlayer, all others are computer players with various strate
 Screenshots
 -
 
-![Screenshot](https://dl.dropboxusercontent.com/u/8069847/reversi.png)
+![Screenshot](reversi.png)
 
 Download
 --------
 
-[Runnable jar file](https://dl.dropboxusercontent.com/u/8069847/reversi.jar)
+[Runnable jar file](https://www.dropbox.com/s/8are3zj26lggrws/reversi.jar?dl=0)
